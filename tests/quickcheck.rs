@@ -13,10 +13,10 @@ const KEY_SPACE: u8 = 20;
 
 #[derive(Clone, Debug)]
 enum Op {
-    Insert(u8, u8),
+    Set(u8, u8),
     Get(u8),
 }
-use Op::{Get, Insert};
+use Op::{Get, Set};
 
 // Arbitrary lets you create randomized instances
 // of types that you're interested in testing
@@ -29,11 +29,34 @@ impl Arbitrary for Op {
         let k: u8 = g.gen_range(0, KEY_SPACE);
 
         if g.gen_weighted_bool(2) {
-            Insert(k, g.gen())
+            Set(k, g.gen())
         } else {
             Get(k)
         }
     }
+}
+
+fn prop_impl_matches_model(ops: Vec<Op>) -> bool {
+    let mut implementation = art::Art::default();
+    let mut model = std::collections::BTreeMap::new();
+
+    for op in ops {
+        match op {
+            Set(k, v) => {
+                implementation.set(vec![k; k as usize], v);
+                model.insert(k, v);
+            }
+            Get(k) => {
+                if implementation.get(&*vec![k; k as usize])
+                    != model.get(&k)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    true
 }
 
 // This macro is shorthand for creating a test
@@ -45,23 +68,63 @@ impl Arbitrary for Op {
 // an argument to the property function.
 quickcheck! {
     fn implementation_matches_model(ops: Vec<Op>) -> bool {
-        let mut implementation = art::Art::default();
-        let mut model = std::collections::BTreeMap::new();
-
-        for op in ops {
-            match op {
-                Insert(k, v) => {
-                    implementation.insert(vec![k; k as usize], v);
-                    model.insert(k, v);
-                }
-                Get(k) => {
-                    if implementation.get(&*vec![k; k as usize]) != model.get(&k) {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        true
+        prop_impl_matches_model(ops)
     }
+}
+
+#[test]
+fn test_1() {
+    // postmortem 1: were not properly handling prefix mismatches
+    prop_impl_matches_model(vec![
+        Set(15, 67),
+        Set(9, 182),
+        Set(12, 221),
+        Set(16, 122),
+        Set(3, 41),
+        Set(5, 209),
+        Set(2, 96),
+        Set(10, 227),
+        Set(13, 37),
+        Set(4, 182),
+        Set(17, 218),
+        Set(6, 139),
+        Set(18, 249),
+        Set(19, 209),
+        Set(14, 34),
+        Set(11, 104),
+        Set(8, 89),
+        Set(1, 110),
+    ]);
+}
+
+#[test]
+fn test_2() {
+    // postmortem 1:
+    prop_impl_matches_model(vec![
+        Set(9, 58),
+        Set(4, 10),
+        Set(2, 209),
+        Set(5, 3),
+        Set(14, 175),
+        Set(1, 73),
+        Set(8, 53),
+        Set(18, 244),
+        Set(12, 227),
+        Set(15, 255),
+        Set(3, 92),
+        Set(6, 102),
+        Set(19, 239),
+        Set(17, 240),
+        Set(7, 227),
+        Set(11, 41),
+        Set(16, 15),
+        Set(10, 215),
+        Set(10, 82),
+    ]);
+}
+
+#[test]
+fn test_3() {
+    // postmortem 1:
+    prop_impl_matches_model(vec![]);
 }
