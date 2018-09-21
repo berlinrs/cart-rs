@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate quickcheck;
-extern crate art;
+extern crate cart;
 extern crate rand;
 
 use self::quickcheck::{Arbitrary, Gen};
@@ -37,7 +37,7 @@ impl Arbitrary for Op {
 }
 
 fn prop_impl_matches_model(ops: Vec<Op>) -> bool {
-    let mut implementation = art::Art::default();
+    let mut implementation = cart::Art::default();
     let mut model = std::collections::BTreeMap::new();
 
     for op in ops {
@@ -47,9 +47,7 @@ fn prop_impl_matches_model(ops: Vec<Op>) -> bool {
                 model.insert(k, v);
             }
             Get(k) => {
-                if implementation.get(&*vec![k; k as usize])
-                    != model.get(&k)
-                {
+                if implementation.get(&*vec![k; k as usize]) != model.get(&k) {
                     return false;
                 }
             }
